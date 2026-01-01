@@ -1,12 +1,9 @@
 name: Binance P2P Data Fetcher
 
 on:
+  workflow_dispatch: # Para ejecutarlo manualmente
   schedule:
     - cron: '0 * * * *'
-  workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   fetch-p2p-data:
@@ -17,8 +14,6 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Python
         uses: actions/setup-python@v4
@@ -26,79 +21,15 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests pandas ccxt
-
-      - name: Crear carpetas necesarias
-        run: |
-          mkdir -p backend
-          mkdir -p data
-
-      - name: Crear script Python real
-        run: |
-          cat > backend/p2p-api.py << "EOF"
-          #!/usr/bin/env python3
-          import os, json, ccxt
-          from datetime import datetime
-
-          def fetch_binance_p2p():
-              exchange = ccxt.binance({
-                  'apiKey': os.environ.get("BINANCE_API_KEY"),
-                  'secret': os.environ.get("BINANCE_API_SECRET"),
-              })
-
-              try:
-                  # Traer historial extenso (ajustado a tus reportes reales)
-                  orders = exchange.sapi_get_c2c_ordermatch_listuserorderhistory({'tradeType': 'BOTH', 'rows': 100})
-                  raw_orders = orders.get('data', [])
-                  
-                  # Agrupar por día para calcular el PNL como en tu Excel
-                  resumen_diario = {}
-                  processed_orders = []
-
-                  for order in raw_orders:
-                      if order['orderStatus'] == 'COMPLETED':
-                          fecha = datetime.fromtimestamp(int(order['createTime'])/1000).strftime('%Y-%m-%d')
-                          monto = float(order['totalPrice'])
-                          tipo = order['tradeType']
-                          
-                          # Guardar orden individual
-                          processed_orders.append({
-                              "id": order['orderNumber'],
-                              "fecha": fecha,
-                              "activo": order['asset'],
-                              "tipo": "COMPRA" if tipo == 'BUY' else "VENTA",
-                              "monto": monto,
-                              "ganancia": 0.0, # Se calcula en base al balance del día
-                              "estado": "COMPLETADO"
-                          })
-
-                  return {
-                      "success": True, 
-                      "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
-                      "operaciones": processed_orders
-                  }
-              except Exception as e:
-                  print(f"Error: {e}")
-                  return None
-
-          datos = fetch_binance_p2p()
-          if datos:
-              with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-                  json.dump(datos, f, indent=2)
-          EOF
+        run: pip install ccxt
 
       - name: Ejecutar script
-        env:
-          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
         run: python backend/p2p-api.py
 
-      - name: Subir cambios al repositorio
+      - name: Subir cambios
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           git add data/p2p-data.json
-          git commit -m "Actualizar datos P2P Reales - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No hay cambios"
+          git commit -m "Actualizar datos P2P" || echo "Sin cambios"
           git push
