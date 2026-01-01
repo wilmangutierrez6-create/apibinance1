@@ -2,7 +2,7 @@ name: Binance P2P Data Fetcher
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Cada hora en punto
+    - cron: '0 * * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
@@ -29,216 +29,299 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests pandas
     
-    - name: Crear carpeta backend si no existe
-      run: mkdir -p backend
+    - name: Crear carpetas necesarias
+      run: |
+        mkdir -p backend
+        mkdir -p data
     
     - name: Crear script Python
       run: |
         cat > backend/p2p-api.py << 'EOF'
-        #!/usr/bin/env python3
-        """
-        Script para obtener datos P2P de Binance
-        """
-        import os
-        import json
-        import time
-        import hmac
-        import hashlib
-        import requests
-        import pandas as pd
-        import urllib.parse
-        from datetime import datetime
-        
-        # Configuración desde Secrets
-        API_KEY = os.environ.get("BINANCE_API_KEY", "")
-        API_SECRET = os.environ.get("BINANCE_API_SECRET", "")
-        BASE_URL = "https://api.binance.com"
-        
-        def sign(params):
-            query = urllib.parse.urlencode(params)
-            return hmac.new(
-                API_SECRET.encode(),
-                query.encode(),
-                hashlib.sha256
-            ).hexdigest()
-        
-        def get_orders(trade_type, max_pages=3):
-            page = 1
-            orders = []
+#!/usr/bin/env python3
+"""
+Script para obtener datos P2P de Binance - Versión robusta
+"""
+import os
+import sys
+import json
+import time
+import hmac
+import hashlib
+import requests
+import pandas as pd
+import urllib.parse
+from datetime import datetime
+
+print("=" * 60)
+print("🚀 INICIANDO SCRIPT P2P DE BINANCE")
+print("=" * 60)
+
+# Configuración desde Secrets
+API_KEY = os.environ.get("BINANCE_API_KEY", "")
+API_SECRET = os.environ.get("BINANCE_API_SECRET", "")
+
+print(f"✓ API_KEY obtenida: {'SÍ' if API_KEY else 'NO'} ({len(API_KEY)} caracteres)")
+print(f"✓ API_SECRET obtenida: {'SÍ' if API_SECRET else 'NO'} ({len(API_SECRET)} caracteres)")
+
+# Validar credenciales
+if not API_KEY or not API_SECRET:
+    print("❌ ERROR: Faltan credenciales de API")
+    print("Por favor, configura los secrets BINANCE_API_KEY y BINANCE_API_SECRET en GitHub")
+    sys.exit(1)
+
+BASE_URL = "https://api.binance.com"
+
+def sign(params, secret):
+    """Firmar parámetros con HMAC SHA256"""
+    try:
+        query = urllib.parse.urlencode(params)
+        signature = hmac.new(
+            secret.encode('utf-8'),
+            query.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        return signature
+    except Exception as e:
+        print(f"❌ Error firmando parámetros: {e}")
+        return ""
+
+def get_orders(trade_type, max_pages=2):
+    """Obtener órdenes P2P"""
+    page = 1
+    orders = []
+    
+    print(f"\n📊 Obteniendo órdenes de {trade_type}...")
+    
+    while page <= max_pages:
+        try:
+            print(f"  Página {page} de {max_pages}")
             
-            while page <= max_pages:
-                try:
-                    payload = {
-                        "tradeType": trade_type,
-                        "page": page,
-                        "rows": 100,
-                        "timestamp": int(time.time() * 1000)
-                    }
-                    payload["signature"] = sign(payload)
-                    headers = {"X-MBX-APIKEY": API_KEY}
-        
-                    r = requests.get(
-                        BASE_URL + "/sapi/v1/c2c/orderMatch/listUserOrderHistory",
-                        headers=headers,
-                        params=payload,
-                        timeout=30
-                    )
-                    data = r.json()
-                    
-                    if "data" not in data or len(data["data"]) == 0:
-                        break
-                        
-                    orders.extend(data["data"])
-                    page += 1
-                    time.sleep(0.1)
-                    
-                except Exception as e:
-                    print(f"Error: {e}")
-                    break
+            payload = {
+                "tradeType": trade_type,
+                "page": page,
+                "rows": 20,  # Reducido para pruebas
+                "timestamp": int(time.time() * 1000)
+            }
             
-            return orders
-        
-        def main():
-            print("🚀 Obteniendo datos P2P de Binance...")
+            signature = sign(payload, API_SECRET)
+            if not signature:
+                break
+                
+            payload["signature"] = signature
+            headers = {"X-MBX-APIKEY": API_KEY}
+
+            response = requests.get(
+                BASE_URL + "/sapi/v1/c2c/orderMatch/listUserOrderHistory",
+                headers=headers,
+                params=payload,
+                timeout=30
+            )
             
-            try:
-                # Obtener datos
-                buy_orders = get_orders("BUY")
-                sell_orders = get_orders("SELL")
+            print(f"  Código HTTP: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"  ❌ Error HTTP: {response.text[:200]}")
+                break
                 
-                all_orders = buy_orders + sell_orders
+            data = response.json()
+            
+            if "data" not in data:
+                print(f"  ❌ Respuesta inesperada: {data}")
+                break
                 
-                if not all_orders:
-                    result = {"success": False, "message": "No se encontraron operaciones"}
-                else:
-                    # Procesar datos
-                    df = pd.DataFrame(all_orders)
-                    df = df[df["orderStatus"] == "COMPLETED"]
+            if len(data["data"]) == 0:
+                print(f"  ✓ No más órdenes en página {page}")
+                break
+                
+            orders.extend(data["data"])
+            print(f"  ✓ {len(data['data'])} órdenes obtenidas")
+            
+            page += 1
+            time.sleep(0.5)  # Pausa para no sobrecargar la API
+            
+        except requests.exceptions.RequestException as e:
+            print(f"  ❌ Error de conexión: {e}")
+            break
+        except Exception as e:
+            print(f"  ❌ Error inesperado: {e}")
+            import traceback
+            traceback.print_exc()
+            break
+    
+    print(f"  Total órdenes {trade_type}: {len(orders)}")
+    return orders
+
+def main():
+    """Función principal"""
+    try:
+        # 1. Obtener datos
+        print("\n" + "=" * 60)
+        print("📥 OBTENIENDO DATOS DE LA API")
+        print("=" * 60)
+        
+        buy_orders = get_orders("BUY")
+        sell_orders = get_orders("SELL")
+        
+        all_orders = buy_orders + sell_orders
+        
+        if not all_orders:
+            print("\n⚠️ No se encontraron órdenes")
+            result = {
+                "success": False, 
+                "message": "No se encontraron operaciones en la cuenta",
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            print(f"\n✅ Total órdenes obtenidas: {len(all_orders)}")
+            
+            # 2. Procesar datos
+            df = pd.DataFrame(all_orders)
+            
+            # Filtrar solo completadas
+            completed_df = df[df["orderStatus"] == "COMPLETED"]
+            print(f"✅ Órdenes completadas: {len(completed_df)}")
+            
+            if completed_df.empty:
+                print("⚠️ No hay órdenes completadas")
+                result = {
+                    "success": False,
+                    "message": "No hay operaciones completadas recientemente",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                # Preparar datos
+                df_clean = completed_df.copy()
+                
+                # Convertir tipos numéricos
+                numeric_cols = ["amount", "unitPrice", "totalPrice"]
+                for col in numeric_cols:
+                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+                
+                # Fechas
+                df_clean["fecha_hora"] = pd.to_datetime(df_clean["createTime"], unit="ms")
+                df_clean["fecha"] = df_clean["fecha_hora"].dt.strftime('%Y-%m-%d')
+                df_clean["hora"] = df_clean["fecha_hora"].dt.strftime('%H:%M:%S')
+                
+                # Cálculo USDT neto
+                df_clean["usdt_neto"] = df_clean.apply(
+                    lambda x: (x["totalPrice"]/x["unitPrice"]) * (1 - 0.0014) 
+                    if x["tradeType"] == "SELL" 
+                    else x["amount"] * (1 - 0.0014),
+                    axis=1
+                )
+                
+                # Resumen por día
+                resumen_diario = []
+                for fecha, group in df_clean.groupby('fecha'):
+                    ventas = group[group['tradeType'] == 'SELL']['usdt_neto'].sum()
+                    compras = group[group['tradeType'] == 'BUY']['usdt_neto'].sum()
+                    ganancia = ventas - compras
                     
-                    if df.empty:
-                        result = {"success": False, "message": "No hay operaciones completadas"}
-                    else:
-                        # Convertir tipos
-                        df["amount"] = df["amount"].astype(float)
-                        df["unitPrice"] = df["unitPrice"].astype(float)
-                        df["totalPrice"] = df["totalPrice"].astype(float)
-                        
-                        # Fechas
-                        df["fecha_hora"] = pd.to_datetime(df["createTime"], unit="ms")
-                        df["fecha"] = df["fecha_hora"].dt.strftime('%Y-%m-%d')
-                        df["hora"] = df["fecha_hora"].dt.strftime('%H:%M:%S')
-                        
-                        # Cálculo USDT neto (tu fórmula)
-                        df["usdt_neto"] = df.apply(
-                            lambda x: (x["totalPrice"]/x["unitPrice"]) * (1 - 0.0014) if x["tradeType"]=="SELL"
-                            else x["amount"] * (1 - 0.0014),
-                            axis=1
-                        )
-                        
-                        # Calcular por día
-                        resumen_diario = []
-                        for fecha, group in df.groupby('fecha'):
-                            ventas = group[group['tradeType'] == 'SELL']['usdt_neto'].sum()
-                            compras = group[group['tradeType'] == 'BUY']['usdt_neto'].sum()
-                            ganancia = ventas - compras
-                            
-                            resumen_diario.append({
-                                'fecha': fecha,
-                                'compras_usdt': round(compras, 2),
-                                'ventas_usdt': round(ventas, 2),
-                                'ganancia_usdt': round(ganancia, 2),
-                                'operaciones': len(group)
-                            })
-                        
-                        # Operaciones individuales
-                        operaciones = []
-                        for _, row in df.iterrows():
-                            # Calcular ganancia proporcional
-                            dia_resumen = next((d for d in resumen_diario if d['fecha'] == row['fecha']), None)
-                            ganancia_op = 0
-                            
-                            if dia_resumen and dia_resumen['operaciones'] > 0:
-                                if row['tradeType'] == 'SELL':
-                                    ganancia_op = dia_resumen['ganancia_usdt'] / dia_resumen['operaciones']
-                                else:
-                                    ganancia_op = -dia_resumen['ganancia_usdt'] / dia_resumen['operaciones']
-                            
-                            operaciones.append({
-                                'id': str(row['orderNumber']),
-                                'fecha': row['fecha'],
-                                'hora': row['hora'],
-                                'activo': row['asset'],
-                                'tipo': 'COMPRA' if row['tradeType'] == 'BUY' else 'VENTA',
-                                'cantidad': round(row['amount'], 4),
-                                'precio_unitario': round(row['unitPrice'], 2),
-                                'total_fiat': round(row['totalPrice'], 2),
-                                'total_usdt': round(row['usdt_neto'], 2),
-                                'ganancia': round(ganancia_op, 2),
-                                'comision': round(row['usdt_neto'] * 0.0014, 2),
-                                'contraparte': row.get('counterPartNickName', 'Desconocido'),
-                                'estado': 'COMPLETADO'
-                            })
-                        
-                        # Resultado final
-                        ganancia_total = sum(d['ganancia_usdt'] for d in resumen_diario)
-                        compras_total = sum(d['compras_usdt'] for d in resumen_diario)
-                        ventas_total = sum(d['ventas_usdt'] for d in resumen_diario)
-                        
-                        result = {
-                            'success': True,
-                            'timestamp': datetime.now().isoformat(),
-                            'total_operaciones': len(df),
-                            'ganancia_total': round(ganancia_total, 2),
-                            'compras_total': round(compras_total, 2),
-                            'ventas_total': round(ventas_total, 2),
-                            'resumen_diario': resumen_diario,
-                            'operaciones': operaciones,
-                            'ultima_actualizacion': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        }
+                    resumen_diario.append({
+                        'fecha': fecha,
+                        'compras_usdt': round(float(compras), 2),
+                        'ventas_usdt': round(float(ventas), 2),
+                        'ganancia_usdt': round(float(ganancia), 2),
+                        'operaciones': int(len(group))
+                    })
                 
-                # Guardar en data/
-                os.makedirs('data', exist_ok=True)
-                with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-                    json.dump(result, f, ensure_ascii=False, indent=2)
-                
-                print(f"✅ Datos guardados: {result.get('total_operaciones', 0)} operaciones")
-                
-            except Exception as e:
-                print(f"❌ Error: {e}")
-                import traceback
-                traceback.print_exc()
+                # Resultado final
+                ganancia_total = sum(d['ganancia_usdt'] for d in resumen_diario)
                 
                 result = {
-                    'success': False,
-                    'error': str(e),
-                    'timestamp': datetime.now().isoformat()
+                    'success': True,
+                    'timestamp': datetime.now().isoformat(),
+                    'total_operaciones': int(len(df_clean)),
+                    'ganancia_total': round(float(ganancia_total), 2),
+                    'compras_total': round(float(sum(d['compras_usdt'] for d in resumen_diario)), 2),
+                    'ventas_total': round(float(sum(d['ventas_usdt'] for d in resumen_diario)), 2),
+                    'resumen_diario': resumen_diario,
+                    'ultima_actualizacion': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
-                with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-                    json.dump(result, f, ensure_ascii=False)
+                
+                print(f"\n📊 RESUMEN FINAL")
+                print(f"   Total operaciones: {result['total_operaciones']}")
+                print(f"   Ganancia total: ${result['ganancia_total']:.2f}")
+                print(f"   Compras total: ${result['compras_total']:.2f}")
+                print(f"   Ventas total: ${result['ventas_total']:.2f}")
         
-        if __name__ == '__main__':
-            main()
-        EOF
+        # 3. Guardar resultados
+        print("\n" + "=" * 60)
+        print("💾 GUARDANDO RESULTADOS")
+        print("=" * 60)
+        
+        os.makedirs('data', exist_ok=True)
+        output_file = 'data/p2p-data.json'
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        print(f"✅ Datos guardados en: {output_file}")
+        print(f"📄 Tamaño del archivo: {os.path.getsize(output_file)} bytes")
+        
+    except Exception as e:
+        print(f"\n❌ ERROR CRÍTICO: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Guardar error
+        error_result = {
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat(),
+            'message': 'Error durante la ejecución del script'
+        }
+        
+        os.makedirs('data', exist_ok=True)
+        with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
+            json.dump(error_result, f, ensure_ascii=False, indent=2)
+        
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+EOF
+
+    - name: Verificar que el script se creó
+      run: |
+        echo "📄 Contenido del script creado:"
+        ls -la backend/p2p-api.py
+        echo ""
+        echo "Primeras 10 líneas:"
+        head -10 backend/p2p-api.py
     
     - name: Ejecutar script con Secrets
       env:
         BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
         BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
-      run: python backend/p2p-api.py
-    
-    - name: Mostrar resultado
       run: |
-        echo "📊 Resumen de datos:"
+        echo "🔧 Variables de entorno:"
+        echo "API_KEY: $(if [ -z "$BINANCE_API_KEY" ]; then echo 'NO DEFINIDA'; else echo 'DEFINIDA (${#BINANCE_API_KEY} caracteres)'; fi)"
+        echo "API_SECRET: $(if [ -z "$BINANCE_API_SECRET" ]; then echo 'NO DEFINIDA'; else echo 'DEFINIDA (${#BINANCE_API_SECRET} caracteres)'; fi)"
+        echo ""
+        echo "🚀 Ejecutando script Python..."
+        python backend/p2p-api.py
+    
+    - name: Verificar resultado
+      run: |
+        echo "📊 Verificando archivo de resultados..."
         if [ -f "data/p2p-data.json" ]; then
-          cat data/p2p-data.json | python -c "import sys,json; d=json.load(sys.stdin); print(f'Operaciones: {d.get(\"total_operaciones\", 0)}'); print(f'Ganancia total: ${d.get(\"ganancia_total\", 0):.2f}'); print(f'Última actualización: {d.get(\"ultima_actualizacion\", \"N/A\")}')"
+          echo "✅ Archivo creado exitosamente"
+          ls -la data/p2p-data.json
+          echo ""
+          echo "Contenido del archivo:"
+          cat data/p2p-data.json
         else
-          echo "❌ No se generó el archivo de datos"
+          echo "❌ No se creó el archivo de resultados"
+          exit 1
         fi
     
     - name: Subir cambios al repositorio
       run: |
+        echo "📤 Subiendo cambios..."
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data/p2p-data.json backend/p2p-api.py
-        git commit -m "📊 Actualizar datos P2P - $(date)" || echo "No hay cambios"
+        git commit -m "📊 Actualizar datos P2P - $(date)" || echo "No hay cambios nuevos"
         git push origin HEAD:main
+      continue-on-error: true  # Continúa aunque falle el push
