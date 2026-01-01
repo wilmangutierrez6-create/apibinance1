@@ -19,80 +19,93 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-    
+
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-    
-     - name: Instalar dependencias
+
+      - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           pip install requests pandas ccxt
-    
+
       - name: Crear carpetas necesarias
         run: |
           mkdir -p backend
           mkdir -p data
-    # AQUÍ VA EL BLOQUE QUE PREGUNTASTE:
-      - name: Crear script Python simplificado
+
+      - name: Crear script Python real
         run: |
           cat > backend/p2p-api.py << "EOF"
           #!/usr/bin/env python3
           import os
           import json
+          import ccxt
           from datetime import datetime
 
-          # 1. Obtener llaves (para uso futuro en la API real)
-          api_key = os.environ.get("BINANCE_API_KEY")
-          api_secret = os.environ.get("BINANCE_API_SECRET")
+          def fetch_binance_p2p():
+              api_key = os.environ.get("BINANCE_API_KEY")
+              api_secret = os.environ.get("BINANCE_API_SECRET")
 
-          # 2. Estructura de datos que espera tu script.js
-          resultado = {
-              "success": True,
-              "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-              "operaciones": [
-                  {
-                      "id": 1,
-                      "fecha": datetime.now().strftime('%Y-%m-%d'),
-                      "activo": "USDT",
-                      "tipo": "VENTA",
-                      "monto": 1500.00,
-                      "ganancia": 25.50,
-                      "estado": "COMPLETADO"
-                  },
-                  {
-                      "id": 2,
-                      "fecha": datetime.now().strftime('%Y-%m-%d'),
-                      "activo": "BTC",
-                      "tipo": "COMPRA",
-                      "monto": 2500.00,
-                      "ganancia": 40.20,
-                      "estado": "COMPLETADO"
+              if not api_key or not api_secret:
+                  print("❌ Error: No se encontraron las API Keys en los Secrets")
+                  return None
+
+              exchange = ccxt.binance({
+                  'apiKey': api_key,
+                  'secret': api_secret,
+                  'enableRateLimit': True,
+              })
+
+              try:
+                  # Consultar historial C2C (P2P)
+                  orders = exchange.sapi_get_c2c_ordermatch_listuserorderhistory({
+                      'tradeType': 'BOTH',
+                      'rows': 50
+                  })
+
+                  raw_orders = orders.get('data', [])
+                  processed_orders = []
+
+                  for order in raw_orders:
+                      if order['orderStatus'] == 'COMPLETED':
+                          processed_orders.append({
+                              "id": order['orderNumber'],
+                              "fecha": datetime.fromtimestamp(int(order['createTime'])/1000).strftime('%Y-%m-%d'),
+                              "activo": order['asset'],
+                              "tipo": "COMPRA" if order['tradeType'] == 'BUY' else "VENTA",
+                              "monto": float(order['totalPrice']),
+                              "ganancia": 0.0,
+                              "estado": "COMPLETADO"
+                          })
+
+                  return {
+                      "success": True,
+                      "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                      "operaciones": processed_orders
                   }
-              ]
-          }
+              except Exception as e:
+                  print(f"❌ Error API Binance: {e}")
+                  return None
 
-          # 3. Guardar el archivo en la carpeta data/
-          with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-              json.dump(resultado, f, indent=2, ensure_ascii=False)
-
-          print("✅ Archivo data/p2p-data.json generado con operaciones.")
+          datos = fetch_binance_p2p()
+          if datos:
+              with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
+                  json.dump(datos, f, indent=2, ensure_ascii=False)
+              print("✅ Archivo data/p2p-data.json actualizado con datos reales")
           EOF
 
-      - name: Ejecutar script con Secrets
-        # ... (Sigue el resto del archivo)
+      - name: Ejecutar script
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
-        run: |
-          echo "Ejecutando script..."
-          python backend/p2p-api.py
-    
+        run: python backend/p2p-api.py
+
       - name: Subir cambios al repositorio
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           git add data/p2p-data.json
-          git commit -m "Actualizar datos P2P - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No hay cambios nuevos"
+          git commit -m "Actualizar datos P2P Reales - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No hay cambios"
           git push
