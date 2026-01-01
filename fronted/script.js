@@ -1,4 +1,4 @@
-,// ============================================
+// ============================================
 // DASHBOARD P2P BINANCE - LÓGICA DE DATOS
 // ============================================
 
@@ -177,5 +177,6 @@ function calcularResumenComoExcel() {
 }
 // Auto-actualizar cada 10 minutos
 setInterval(cargarDatosDesdeJSON, 600000);
+
 
 
