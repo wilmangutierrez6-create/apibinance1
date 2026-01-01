@@ -1,0 +1,144 @@
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding-bottom: 50px;
+}
+
+.card {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+    height: 100%;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.navbar {
+    background: linear-gradient(135deg, #1e2026 0%, #2d3139 100%);
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.bg-primary {
+    background: linear-gradient(135deg, #f0b90b 0%, #f8d12f 100%) !important;
+    border: none;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #00a67e 0%, #00c9a7 100%) !important;
+    border: none;
+}
+
+.bg-info {
+    background: linear-gradient(135deg, #007bff 0%, #00a8ff 100%) !important;
+    border: none;
+}
+
+.bg-warning {
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8e53 100%) !important;
+    border: none;
+}
+
+.card h2 {
+    font-size: 2rem;
+    margin: 10px 0;
+    font-weight: bold;
+}
+
+.card h5 {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.profit-positive {
+    color: #00a67e;
+    font-weight: bold;
+}
+
+.profit-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-top: none;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(240, 185, 11, 0.05);
+}
+
+#profitChart {
+    width: 100% !important;
+    height: 300px !important;
+}
+
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #eee;
+    padding: 12px 15px;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+footer {
+    border-top: 1px solid #dee2e6;
+    margin-top: 40px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: white;
+}
+
+.container {
+    padding-bottom: 60px;
+}
+
+.badge-completed {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+.bg-info, .bg-warning {
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .card h2 {
+        font-size: 1.5rem;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    .row {
+        margin-left: -5px;
+        margin-right: -5px;
+    }
+    
+    .col-md-3, .col-md-4, .col-md-8 {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+}
