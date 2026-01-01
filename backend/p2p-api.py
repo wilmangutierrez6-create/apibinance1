@@ -1,4 +1,4 @@
-.#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script para obtener datos P2P de Binance
 Versión completa con API real
