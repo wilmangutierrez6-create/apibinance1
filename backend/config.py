@@ -6,7 +6,7 @@ Configuración para el script P2P
 API_SETTINGS = {
     "base_url": "https://api.binance.com",
     "endpoint": "/sapi/v1/c2c/orderMatch/listUserOrderHistory",
-    "timeout": 30,
+    "timeout": 5,
     "max_pages": 10,
     "rows_per_page": 100
 }
