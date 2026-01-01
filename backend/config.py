@@ -18,4 +18,3 @@ ANALYSIS_SETTINGS = {
     "output_dir": "data",
     "output_file": "p2p-data.json"
 }
-.
