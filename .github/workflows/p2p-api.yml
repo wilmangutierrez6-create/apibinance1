@@ -37,7 +37,7 @@ jobs:
     
       - name: Crear script Python simplificado
         run: |
-          cat > backend/p2p-api.py << 'EOF'
+          cat > backend/p2p-api.py << "EOF"
 #!/usr/bin/env python3
 print("Script P2P de Binance")
 import os
@@ -48,8 +48,8 @@ from datetime import datetime
 api_key = os.environ.get("BINANCE_API_KEY")
 api_secret = os.environ.get("BINANCE_API_SECRET")
 
-print(f"API_KEY: {'✅' if api_key else '❌'}")
-print(f"API_SECRET: {'✅' if api_secret else '❌'}")
+print(f"API_KEY: {'SI' if api_key else 'NO'}")
+print(f"API_SECRET: {'SI' if api_secret else 'NO'}")
 
 # Crear datos de prueba
 resultado = {
@@ -65,12 +65,12 @@ resultado = {
 with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
     json.dump(resultado, f, indent=2, ensure_ascii=False)
 
-print("✅ Datos guardados en data/p2p-data.json")
+print("Datos guardados en data/p2p-data.json")
 EOF
     
       - name: Verificar script creado
         run: |
-          echo "📄 Verificando script Python:"
+          echo "Verificando script Python:"
           ls -la backend/p2p-api.py
           echo "Primeras 5 líneas:"
           head -5 backend/p2p-api.py
@@ -80,21 +80,21 @@ EOF
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
         run: |
-          echo "🔧 Variables de entorno:"
-          echo "BINANCE_API_KEY: $(if [ -z "$BINANCE_API_KEY" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO (${#BINANCE_API_KEY} caracteres)'; fi)"
-          echo "BINANCE_API_SECRET: $(if [ -z "$BINANCE_API_SECRET" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO (${#BINANCE_API_SECRET} caracteres)'; fi)"
+          echo "Variables de entorno:"
+          echo "BINANCE_API_KEY: $(if [ -z "$BINANCE_API_KEY" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO'; fi)"
+          echo "BINANCE_API_SECRET: $(if [ -z "$BINANCE_API_SECRET" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO'; fi)"
           echo ""
-          echo "🚀 Ejecutando script..."
+          echo "Ejecutando script..."
           python backend/p2p-api.py
     
       - name: Verificar resultado
         run: |
-          echo "📊 Verificando resultados..."
+          echo "Verificando resultados..."
           if [ -f "data/p2p-data.json" ]; then
-            echo "✅ Archivo creado exitosamente"
+            echo "Archivo creado exitosamente"
             cat data/p2p-data.json
           else
-            echo "❌ Error: No se creó el archivo"
+            echo "Error: No se creó el archivo"
             exit 1
           fi
     
@@ -103,5 +103,5 @@ EOF
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
           git add data/p2p-data.json
-          git commit -m "📊 Actualizar datos P2P - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No hay cambios nuevos"
+          git commit -m "Actualizar datos P2P - $(date +'%Y-%m-%d %H:%M:%S')" || echo "No hay cambios nuevos"
           git push
