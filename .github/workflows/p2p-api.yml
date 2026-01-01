@@ -34,41 +34,54 @@ jobs:
         run: |
           mkdir -p backend
           mkdir -p data
-    
+    # AQUÍ VA EL BLOQUE QUE PREGUNTASTE:
       - name: Crear script Python simplificado
         run: |
           cat > backend/p2p-api.py << "EOF"
           #!/usr/bin/env python3
-          print("Script P2P de Binance")
           import os
           import json
           from datetime import datetime
 
-          # Verificar secrets
+          # 1. Obtener llaves (para uso futuro en la API real)
           api_key = os.environ.get("BINANCE_API_KEY")
           api_secret = os.environ.get("BINANCE_API_SECRET")
 
-          print(f"API_KEY: {'SI' if api_key else 'NO'}")
-          print(f"API_SECRET: {'SI' if api_secret else 'NO'}")
-
-          # Crear datos de prueba
+          # 2. Estructura de datos que espera tu script.js
           resultado = {
               "success": True,
-              "timestamp": datetime.now().isoformat(),
-              "message": "Script ejecutado correctamente",
-              "api_key_presente": bool(api_key),
-              "api_secret_presente": bool(api_secret),
-              "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+              "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+              "operaciones": [
+                  {
+                      "id": 1,
+                      "fecha": datetime.now().strftime('%Y-%m-%d'),
+                      "activo": "USDT",
+                      "tipo": "VENTA",
+                      "monto": 1500.00,
+                      "ganancia": 25.50,
+                      "estado": "COMPLETADO"
+                  },
+                  {
+                      "id": 2,
+                      "fecha": datetime.now().strftime('%Y-%m-%d'),
+                      "activo": "BTC",
+                      "tipo": "COMPRA",
+                      "monto": 2500.00,
+                      "ganancia": 40.20,
+                      "estado": "COMPLETADO"
+                  }
+              ]
           }
 
-          # Guardar resultados
+          # 3. Guardar el archivo en la carpeta data/
           with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
               json.dump(resultado, f, indent=2, ensure_ascii=False)
 
-          print("Datos guardados en data/p2p-data.json")
+          print("✅ Archivo data/p2p-data.json generado con operaciones.")
           EOF
-    
+
       - name: Ejecutar script con Secrets
+        # ... (Sigue el resto del archivo)
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
