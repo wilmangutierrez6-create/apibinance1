@@ -39,61 +39,56 @@ jobs:
         run: |
           cat > backend/p2p-api.py << "EOF"
           #!/usr/bin/env python3
-          import os
-          import json
-          import ccxt
+          import os, json, ccxt
           from datetime import datetime
 
           def fetch_binance_p2p():
-              api_key = os.environ.get("BINANCE_API_KEY")
-              api_secret = os.environ.get("BINANCE_API_SECRET")
-
-              if not api_key or not api_secret:
-                  print("❌ Error: No se encontraron las API Keys en los Secrets")
-                  return None
-
               exchange = ccxt.binance({
-                  'apiKey': api_key,
-                  'secret': api_secret,
-                  'enableRateLimit': True,
+                  'apiKey': os.environ.get("BINANCE_API_KEY"),
+                  'secret': os.environ.get("BINANCE_API_SECRET"),
               })
 
               try:
-                  # Consultar historial C2C (P2P)
-                  orders = exchange.sapi_get_c2c_ordermatch_listuserorderhistory({
-                      'tradeType': 'BOTH',
-                      'rows': 50
-                  })
-
+                  # Traemos 100 órdenes para tener más historial de cálculo
+                  orders = exchange.sapi_get_c2c_ordermatch_listuserorderhistory({'tradeType': 'BOTH', 'rows': 100})
                   raw_orders = orders.get('data', [])
-                  processed_orders = []
+                  
+                  # Paso 1: Separar compras de ventas para calcular costos
+                  compras = [float(o['unitPrice']) for o in raw_orders if o['tradeType'] == 'BUY' and o['orderStatus'] == 'COMPLETED']
+                  precio_promedio_compra = sum(compras) / len(compras) if compras else 0
 
+                  processed_orders = []
                   for order in raw_orders:
                       if order['orderStatus'] == 'COMPLETED':
+                          precio_actual = float(order['unitPrice'])
+                          monto_total = float(order['totalPrice'])
+                          
+                          # Paso 2: Calcular ganancia estimada si es una VENTA
+                          ganancia_estimada = 0
+                          if order['tradeType'] == 'SELL' and precio_promedio_compra > 0:
+                              # Ganancia = (Precio Venta - Precio Compra Promedio) * Cantidad
+                              cantidad = float(order['amount'])
+                              ganancia_estimada = (precio_actual - precio_promedio_compra) * cantidad
+
                           processed_orders.append({
                               "id": order['orderNumber'],
                               "fecha": datetime.fromtimestamp(int(order['createTime'])/1000).strftime('%Y-%m-%d'),
                               "activo": order['asset'],
                               "tipo": "COMPRA" if order['tradeType'] == 'BUY' else "VENTA",
-                              "monto": float(order['totalPrice']),
-                              "ganancia": 0.0,
+                              "monto": monto_total,
+                              "ganancia": round(ganancia_estimada, 2),
                               "estado": "COMPLETADO"
                           })
 
-                  return {
-                      "success": True,
-                      "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                      "operaciones": processed_orders
-                  }
+                  return {"success": True, "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "operaciones": processed_orders}
               except Exception as e:
-                  print(f"❌ Error API Binance: {e}")
+                  print(f"Error: {e}")
                   return None
 
           datos = fetch_binance_p2p()
           if datos:
               with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-                  json.dump(datos, f, indent=2, ensure_ascii=False)
-              print("✅ Archivo data/p2p-data.json actualizado con datos reales")
+                  json.dump(datos, f, indent=2)
           EOF
 
       - name: Ejecutar script
