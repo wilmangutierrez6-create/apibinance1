@@ -38,65 +38,43 @@ jobs:
       - name: Crear script Python simplificado
         run: |
           cat > backend/p2p-api.py << "EOF"
-#!/usr/bin/env python3
-print("Script P2P de Binance")
-import os
-import json
-from datetime import datetime
+          #!/usr/bin/env python3
+          print("Script P2P de Binance")
+          import os
+          import json
+          from datetime import datetime
 
-# Verificar secrets
-api_key = os.environ.get("BINANCE_API_KEY")
-api_secret = os.environ.get("BINANCE_API_SECRET")
+          # Verificar secrets
+          api_key = os.environ.get("BINANCE_API_KEY")
+          api_secret = os.environ.get("BINANCE_API_SECRET")
 
-print(f"API_KEY: {'SI' if api_key else 'NO'}")
-print(f"API_SECRET: {'SI' if api_secret else 'NO'}")
+          print(f"API_KEY: {'SI' if api_key else 'NO'}")
+          print(f"API_SECRET: {'SI' if api_secret else 'NO'}")
 
-# Crear datos de prueba
-resultado = {
-    "success": True,
-    "timestamp": datetime.now().isoformat(),
-    "message": "Script ejecutado correctamente",
-    "api_key_presente": bool(api_key),
-    "api_secret_presente": bool(api_secret),
-    "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-}
+          # Crear datos de prueba
+          resultado = {
+              "success": True,
+              "timestamp": datetime.now().isoformat(),
+              "message": "Script ejecutado correctamente",
+              "api_key_presente": bool(api_key),
+              "api_secret_presente": bool(api_secret),
+              "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+          }
 
-# Guardar resultados
-with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
-    json.dump(resultado, f, indent=2, ensure_ascii=False)
+          # Guardar resultados
+          with open('data/p2p-data.json', 'w', encoding='utf-8') as f:
+              json.dump(resultado, f, indent=2, ensure_ascii=False)
 
-print("Datos guardados en data/p2p-data.json")
-EOF
-    
-      - name: Verificar script creado
-        run: |
-          echo "Verificando script Python:"
-          ls -la backend/p2p-api.py
-          echo "Primeras 5 líneas:"
-          head -5 backend/p2p-api.py
+          print("Datos guardados en data/p2p-data.json")
+          EOF
     
       - name: Ejecutar script con Secrets
         env:
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
         run: |
-          echo "Variables de entorno:"
-          echo "BINANCE_API_KEY: $(if [ -z "$BINANCE_API_KEY" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO'; fi)"
-          echo "BINANCE_API_SECRET: $(if [ -z "$BINANCE_API_SECRET" ]; then echo 'NO CONFIGURADO'; else echo 'CONFIGURADO'; fi)"
-          echo ""
           echo "Ejecutando script..."
           python backend/p2p-api.py
-    
-      - name: Verificar resultado
-        run: |
-          echo "Verificando resultados..."
-          if [ -f "data/p2p-data.json" ]; then
-            echo "Archivo creado exitosamente"
-            cat data/p2p-data.json
-          else
-            echo "Error: No se creó el archivo"
-            exit 1
-          fi
     
       - name: Subir cambios al repositorio
         run: |
