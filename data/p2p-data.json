@@ -1,8 +1,24 @@
 {
   "success": true,
-  "timestamp": "2026-01-01T19:02:41.498014",
-  "message": "Script ejecutado correctamente",
-  "api_key_presente": true,
-  "api_secret_presente": true,
-  "ultima_actualizacion": "2026-01-01 19:02:41"
+  "ultima_actualizacion": "2026-01-01 19:06:42",
+  "operaciones": [
+    {
+      "id": 1,
+      "fecha": "2026-01-01",
+      "activo": "USDT",
+      "tipo": "VENTA",
+      "monto": 1500.0,
+      "ganancia": 25.5,
+      "estado": "COMPLETADO"
+    },
+    {
+      "id": 2,
+      "fecha": "2026-01-01",
+      "activo": "BTC",
+      "tipo": "COMPRA",
+      "monto": 2500.0,
+      "ganancia": 40.2,
+      "estado": "COMPLETADO"
+    }
+  ]
 }
