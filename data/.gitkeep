@@ -1,0 +1,3 @@
+# En la raíz de tu repositorio
+mkdir data
+touch data/.gitkeep
