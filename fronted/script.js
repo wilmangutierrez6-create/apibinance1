@@ -163,6 +163,18 @@ function cargarDatosEjemplo() {
         { id: 99, fecha: new Date().toISOString().split('T')[0], activo: 'USDT', tipo: 'VENTA', monto: 100, ganancia: 5.5, estado: 'COMPLETADO' }
     ];
 }
+// Añade esta función a tu script.js para calcular el resumen diario real
+function calcularResumenComoExcel() {
+    const resumen = operationsData.reduce((acc, op) => {
+        if (!acc[op.fecha]) acc[op.fecha] = { compra: 0, venta: 0 };
+        if (op.tipo === 'COMPRA') acc[op.fecha].compra += op.monto;
+        else acc[op.fecha].venta += op.monto;
+        return acc;
+    }, {});
 
+    console.log("Resumen Diario Calculado:", resumen);
+    // Aquí puedes enviar estos datos a una nueva tabla de 'Resumen Diarios'
+}
 // Auto-actualizar cada 10 minutos
 setInterval(cargarDatosDesdeJSON, 600000);
+
