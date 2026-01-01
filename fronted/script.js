@@ -8,13 +8,39 @@ let operationsData = [];
 // Cuando la página cargue
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Dashboard cargado');
-    cargarDatosEjemplo();
+    // En lugar de generar ejemplos, cargamos el archivo JSON real
+    cargarDatosDesdeJSON(); 
+});
+
+// NUEVA FUNCIÓN PARA LEER DATOS REALES
+async function cargarDatosDesdeJSON() {
+    try {
+        console.log('Fetching datos reales desde data/p2p-data.json...');
+        // Ajusta la ruta si tu HTML está en la carpeta 'fronted'
+        const respuesta = await fetch('../data/p2p-data.json'); 
+        const datos = await respuesta.json();
+        
+        // Aquí es donde conectas los datos del JSON con tu lógica de Dashboard
+        // Nota: Ajusta 'datos.operaciones' según la estructura de tu script Python
+        operationsData = datos.operaciones || []; 
+        
+        // Si el JSON es exitoso, dibujamos todo
+        actualizarInterfaz();
+        
+    } catch (error) {
+        console.error('❌ Error cargando el JSON real:', error);
+        console.log('Cargando datos de ejemplo por falla de red...');
+        cargarDatosEjemplo(); // Plan B si el archivo no existe
+        actualizarInterfaz();
+    }
+}
+
+function actualizarInterfaz() {
     mostrarDashboard();
     crearGrafico();
     mostrarTablaOperaciones();
     mostrarMejoresDias();
-});
-
+}
 // 1. CARGAR DATOS DE EJEMPLO
 function cargarDatosEjemplo() {
     console.log('📊 Generando datos de ejemplo...');
@@ -359,4 +385,5 @@ console.log(`
 setInterval(() => {
     console.log('🔄 Actualizando datos...');
     // Aquí iría la llamada real a tu API
+
 }, 30000);
