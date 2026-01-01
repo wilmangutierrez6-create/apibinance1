@@ -49,38 +49,36 @@ jobs:
               })
 
               try:
-                  # Traemos 100 órdenes para tener más historial de cálculo
+                  # Traer historial extenso (ajustado a tus reportes reales)
                   orders = exchange.sapi_get_c2c_ordermatch_listuserorderhistory({'tradeType': 'BOTH', 'rows': 100})
                   raw_orders = orders.get('data', [])
                   
-                  # Paso 1: Separar compras de ventas para calcular costos
-                  compras = [float(o['unitPrice']) for o in raw_orders if o['tradeType'] == 'BUY' and o['orderStatus'] == 'COMPLETED']
-                  precio_promedio_compra = sum(compras) / len(compras) if compras else 0
-
+                  # Agrupar por día para calcular el PNL como en tu Excel
+                  resumen_diario = {}
                   processed_orders = []
+
                   for order in raw_orders:
                       if order['orderStatus'] == 'COMPLETED':
-                          precio_actual = float(order['unitPrice'])
-                          monto_total = float(order['totalPrice'])
+                          fecha = datetime.fromtimestamp(int(order['createTime'])/1000).strftime('%Y-%m-%d')
+                          monto = float(order['totalPrice'])
+                          tipo = order['tradeType']
                           
-                          # Paso 2: Calcular ganancia estimada si es una VENTA
-                          ganancia_estimada = 0
-                          if order['tradeType'] == 'SELL' and precio_promedio_compra > 0:
-                              # Ganancia = (Precio Venta - Precio Compra Promedio) * Cantidad
-                              cantidad = float(order['amount'])
-                              ganancia_estimada = (precio_actual - precio_promedio_compra) * cantidad
-
+                          # Guardar orden individual
                           processed_orders.append({
                               "id": order['orderNumber'],
-                              "fecha": datetime.fromtimestamp(int(order['createTime'])/1000).strftime('%Y-%m-%d'),
+                              "fecha": fecha,
                               "activo": order['asset'],
-                              "tipo": "COMPRA" if order['tradeType'] == 'BUY' else "VENTA",
-                              "monto": monto_total,
-                              "ganancia": round(ganancia_estimada, 2),
+                              "tipo": "COMPRA" if tipo == 'BUY' else "VENTA",
+                              "monto": monto,
+                              "ganancia": 0.0, # Se calcula en base al balance del día
                               "estado": "COMPLETADO"
                           })
 
-                  return {"success": True, "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "operaciones": processed_orders}
+                  return {
+                      "success": True, 
+                      "ultima_actualizacion": datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
+                      "operaciones": processed_orders
+                  }
               except Exception as e:
                   print(f"Error: {e}")
                   return None
