@@ -1,16 +1,37 @@
-import os, json, ccxt
-from datetime import datetime
+import requests
+import time
+import hmac
+import hashlib
 
-def fetch_binance_p2p():
-    # ⚠️ LLAVES DIRECTAS (Hardcoded)
-    api_key = "7WkQpM8QrpOvpz6MZ9RRm3FyuxN5CCkIU0ev1LiIfYtKe4ReuumQ4gCqnOs3bKa3"
-    api_secret = "sJfdcwOKWmZrLdzqyv7uWvnwhiNPnvz9xOq2v5kEwrL02uf7SGNyDEw2IjM2vRVY"
-    
-    exchange = ccxt.binance({
-        'apiKey': api_key,
-        'secret': api_secret,
-        'enableRateLimit': True,
-    })
+API_KEY = "7WkQpM8QrpOvpz6MZ9RRm3FyuxN5CCkIU0ev1LiIfYtKe4ReuumQ4gCqnOs3bKa3"
+API_SECRET = "sJfdcwOKWmZrLdzqyv7uWvnwhiNPnvz9xOq2v5kEwrL02uf7SGNyDEw2IjM2vRVY"
+
+BASE_URL = "https://api.binance.com"
+
+def get_c2c_trade_history():
+    endpoint = "/sapi/v1/c2c/orderMatch/list"
+    timestamp = int(time.time() * 1000)
+
+    params = {
+        "timestamp": timestamp,
+        "recvWindow": 5000
+    }
+
+    # Crear firma HMAC SHA256
+    query_string = "&".join([f"{key}={value}" for key, value in params.items()])
+    signature = hmac.new(API_SECRET.encode("utf-8"), query_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    headers = {
+        "X-MBX-APIKEY": API_KEY
+    }
+
+    response = requests.get(BASE_URL + endpoint, params={**params, "signature": signature}, headers=headers)
+    return response.json()
+
+if __name__ == "__main__":
+    data = get_c2c_trade_history()
+    print(data)
+
 
     try:
         print("Consultando órdenes en Binance...")
