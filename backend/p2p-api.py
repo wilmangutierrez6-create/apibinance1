@@ -3,8 +3,8 @@ import time
 import hmac
 import hashlib
 
-API_KEY = "7WkQpM8QrpOvpz6MZ9RRm3FyuxN5CCkIU0ev1LiIfYtKe4ReuumQ4gCqnOs3bKa3"
-API_SECRET = "sJfdcwOKWmZrLdzqyv7uWvnwhiNPnvz9xOq2v5kEwrL02uf7SGNyDEw2IjM2vRVY"
+API_KEY = "fhPmbFmVKf1fdpw5XyzJ3FBnziZUH0n3g8u55OQvDUsy5Q8yVgfNTgvaufUE5e2h"
+API_SECRET = "dfYnRvVRjtmSpFFDkA58HOU1NyERSxP7O3c1vUfZ5jNbY8MwPuSnYaecGqMzPd5K"
 
 BASE_URL = "https://api.binance.com"
 
